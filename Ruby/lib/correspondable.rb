@@ -1,11 +1,23 @@
 
 class XContext
-    def initialize(writer, indent = 4)
+    def initialize(writer, data = nil, indent = 4, head_index: 0)
         @writer = writer;
-        @step = indent;        
+        @data = data;
+        @step = indent;
         @depth = 0;
+        @head_index = head_index;
         @single_line = false;
         @text = TextWriter.new(self);
+        @current = XCounter.new();
+        @current.parent = @current;
+    end
+
+    def data()
+        return @data;
+    end
+
+    def head_index()
+        return @head_index;
     end
 
     def write_element(name, single_line, attrs, child)
@@ -53,17 +65,34 @@ class XContext
             @writer.write("\n");
         end
     end
+
+    def create_counter()
+        c = XCounter.new(self);
+        c.parent = @current;
+        @curent = c;
+        return c;
+    end
 end
 
 class XCounter
-    def initialize(v = 0)
-        @count = v;
+    def initialize(ctx = nil)
+        @context = ctx;
+        if ctx
+            @count = ctx.head_index();
+        else
+            @count = 0;
+        end
     end
-    attr_writer :data
-    attr_writer :parent
-    def next
+    attr_accessor :parent;
+    def create_child()
+        c = XCounter.new(@context);
+        c.parent = self;
+        return c;
+    end
+    def next()
         @count += 1;
     end
+ 
     def < (limit)
         return @count < limit;
     end
@@ -76,25 +105,36 @@ class XCounter
     def as_index_of(a)
         return a[@count];
     end
+
+    def count()
+        return @count;
+    end
+
+    def data()
+        return @context.data;
+    end
+
     def attrs()
         return {}
     end
-    def valid()
+    def valid?()
         @count == 0
+    end
+
+    def reset(v = 0)
+        @count = v;
+        return false;
     end
 end
 
 class ElementWriter
-    def initialize(ctx, name, single_line = false, counter = XCounter.new(), &child)
-        while(counter.valid())
+    def self.pop(ctx, name, single_line = false, counter = XCounter.new(), &child)
+        while(counter.valid?())
             ctx.write_element(name, single_line, counter.attrs(), child);
             counter.next();
         end
-    end
-    def self.pop(ctx, name, single_line = false, counter = XCounter.new(), &child)
-        while(counter.valid())
-            ctx.write_element(name, single_line, counter.attrs(), child);
-            counter.next();
+        if ctx
+            counter.reset(ctx.head_index());
         end
     end
 end
