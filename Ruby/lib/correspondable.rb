@@ -78,10 +78,11 @@ class XCounter
     def initialize(ctx = nil)
         @context = ctx;
         if ctx
-            @count = ctx.head_index();
+            @head_index = ctx.head_index();
         else
-            @count = 0;
+            @head_index = 0;
         end
+        @count = @head_index;
     end
     attr_accessor :parent;
     def create_child()
@@ -89,6 +90,7 @@ class XCounter
         c.parent = self;
         return c;
     end
+    
     def next()
         @count += 1;
     end
@@ -117,12 +119,13 @@ class XCounter
     def attrs()
         return {}
     end
+
     def valid?()
-        @count == 0
+        return @count == @head_index;
     end
 
-    def reset(v = 0)
-        @count = v;
+    def reset()
+        @count = @head_index;
         return false;
     end
 end
@@ -133,9 +136,7 @@ class ElementWriter
             ctx.write_element(name, single_line, counter.attrs(), child);
             counter.next();
         end
-        if ctx
-            counter.reset(ctx.head_index());
-        end
+        counter.reset();
     end
 end
 
