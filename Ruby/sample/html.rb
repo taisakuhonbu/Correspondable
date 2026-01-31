@@ -22,24 +22,74 @@ class TITLE < ElementWriter
     end
 end
 
-class SCRIPT < ElementWriter
-    def self.pop(ctx, src)
+class CSS < ElementWriter
+    def self.pop(ctx, href)
         c = XCounter.new()
-        def c.src=(src)
-            @src = src;
+        c.attr("rel", "stylesheet");
+        c.attr("href", href)
+        super(ctx, "link", true, c);
+    end
+end
+
+class SCRIPT < ElementWriter
+    def self.pop(ctx, src = nil)
+        c = XCounter.new()
+        if src
+            c.attr("src", src)
+            super(ctx, "script", true, c){
+            }
+        else
+            super(ctx, "script", false, c);
         end
-        c.src = src;
-        def c.attrs()
-            return {"src" => @src}
-        end
-        super(ctx, "script", true, c){
-        }
     end
 end
 
 class BODY < ElementWriter
     def self.pop(ctx, &child)
         super(ctx, "body");
+    end
+end
+
+class H1 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h1", true){|t|
+            t.w(heading);
+        }
+    end
+end
+class H2 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h2", true){|t|
+            t.w(heading);
+        }
+    end
+end
+class H3 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h3", true){|t|
+            t.w(heading);
+        }
+    end
+end
+class H4 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h4", true){|t|
+            t.w(heading);
+        }
+    end
+end
+class H5 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h5", true){|t|
+            t.w(heading);
+        }
+    end
+end
+class H6 < ElementWriter
+    def self.pop(ctx, heading, &child)
+        super(ctx, "h6", true){|t|
+            t.w(heading);
+        }
     end
 end
 
@@ -52,6 +102,12 @@ end
 class P < ElementWriter
     def self.pop(ctx, &child)
         super(ctx, "p");
+    end
+end
+
+class BR < ElementWriter
+    def self.pop(ctx)
+        super(ctx, "br", true)
     end
 end
 
@@ -76,5 +132,17 @@ end
 class TD < ElementWriter
     def self.pop(ctx, single_line, counter, &child)
         super(ctx, "td", single_line, counter);
+    end
+end
+
+class PRE < ElementWriter
+    def self.pop(ctx, single_line, &child)
+        super(ctx, "pre", single_line);
+    end
+end
+
+class CODE < ElementWriter
+    def self.pop(ctx, single_line, counter, &child)
+        super(ctx, "code", single_line, counter);
     end
 end

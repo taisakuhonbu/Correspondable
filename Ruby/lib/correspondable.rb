@@ -37,6 +37,7 @@ class XContext
                 @writer.write("\n");
                 @depth += 1;
             end
+            @text.text_indent = @depth;
             child.call(@text)
             if single_line == false
                 @depth -= 1;
@@ -52,9 +53,9 @@ class XContext
         end
     end
 
-    def write_text(content, escaped)
+    def write_text(content, escaped, depth)
         if @single_line == false
-            @writer.write(" " * (@depth * @step));
+            @writer.write(" " * (depth * @step));
         end
         if escaped
             @writer.write(content);
@@ -83,6 +84,7 @@ class XCounter
             @head_index = 0;
         end
         @count = @head_index;
+        @attr = {}
     end
     attr_accessor :parent;
     def create_child()
@@ -90,7 +92,11 @@ class XCounter
         c.parent = self;
         return c;
     end
-    
+
+    def attr(k, v)
+        @attr[k] = v;
+    end
+
     def next()
         @count += 1;
     end
@@ -117,7 +123,7 @@ class XCounter
     end
 
     def attrs()
-        return {}
+        return @attr;
     end
 
     def valid?()
@@ -142,9 +148,13 @@ end
 
 class TextWriter
     def initialize(ctx)
-        @context = ctx
+        @context = ctx;
+    end
+    def text_indent=(indent)
+        @text_indent = indent;
     end
     def w(content, escaped = false)
-        @context.write_text(content, escaped)
+        content.chomp!();
+        @context.write_text(content, escaped, @text_indent)
     end
 end
