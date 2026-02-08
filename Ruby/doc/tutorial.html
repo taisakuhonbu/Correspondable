@@ -1,0 +1,262 @@
+<html>
+    <head>
+        <title>[Correspondable docs] tutorial</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+        <script>
+            hljs.highlightAll();
+        </script>
+        <link rel="stylesheet" href="tutorial.css"/>
+    </head>
+    <body>
+        <h1>Correspondable tutorial</h1>
+        <p>
+            XML を書き出すプログラムソースコードを、XML と同じインデントで書くことができます。
+            <br/>
+            HTML を書き出すサンプルで解説します。
+        </p>
+        <h2>要素クラスを作る</h2>
+        <p>
+            ElementWriter を継承してクラスメソッドの pop をオーバーライドします。最初の引数はコンテキストで、全体をコントールして XML を組み立てます。
+        </p>
+        <h3>属性を持たない空要素</h3>
+        <p>
+            hr 要素を作ります。要素名を親に渡すだけです。
+        </p>
+        <pre><code class="language-ruby">
+class HR &lt; ElementWriter
+    def self.pop(ctx)
+        super(ctx, "hr")
+    end
+end
+        </code></pre>
+        <h3>属性がなくて、単純なテキストを持つ要素</h3>
+        <p>
+            title 要素を作ります。pop の引数でテキストを取ってしまいましょう。true は single_line です。改行なしで要素を書き出すように指示しています。ブロックの引数は TextWriter です。w メソッドに文字列を渡します。通常は XML エスケープをします。
+        </p>
+        <pre><code class="language-ruby">
+class TITLE &lt; ElementWriter
+    def self.pop(ctx, title)
+        super(ctx, "title", true){|t|
+            t.w(title);
+        }
+    end
+end
+        </code></pre>
+        <h3>一般的な要素</h3>
+        <p>
+            body 要素を作ります。属性は持たせていません。テキストと子要素を作れるようにするため、ブロックを引数にとれるようにします。
+        </p>
+        <pre><code class="language-ruby">
+class BODY &lt; ElementWriter
+    def self.pop(ctx, &amp;child)
+        super(ctx, "body");
+    end
+end
+        </code></pre>
+        <h3>決まった属性を持つ要素</h3>
+        <p>
+            スタイルシート指定の要素を作ります。引数で参照先を取りましょう。属性を作るには、XCounter が必要です。コンストラクターでキーと値を並べます。作ったら親に渡します。
+        </p>
+        <pre><code class="language-ruby">
+class CSS &lt; ElementWriter
+    def self.pop(ctx, href)
+        c = XCounter.new(rel: "stylesheet", href: href);
+        super(ctx, "link", true, c);
+    end
+end
+        </code></pre>
+        <h3>単純でない属性を持つ要素</h3>
+        <p>
+            tr 要素を作ります。縞模様にしたいことがあるでしょう。XCounter を外からもらいます。これは繰り返しにも使います。
+        </p>
+        <pre><code class="language-ruby">
+class TR &lt; ElementWriter
+    def self.pop(ctx, counter, &amp;child)
+        super(ctx, "tr", false, counter);
+    end
+end
+        </code></pre>
+        <h3>属性かテキストか、の要素</h3>
+        <p>
+            script 要素を作ります。ブロックを取れるようにしますが、あるかないかで分岐します。src があった場合は、何もしないブロックをつけます。これで開くタグと閉じるタグになります。
+        </p>
+        <pre><code class="language-ruby">
+class SCRIPT &lt; ElementWriter
+    def self.pop(ctx, src = nil, &amp;child)
+        c = XCounter.new(src: src);
+        if src
+            super(ctx, "script", true, c){
+            }
+        else
+            super(ctx, "script", false, c);
+        end
+    end
+end
+        </code></pre>
+        <h2>HTML を書き出すプログラム</h2>
+        <p>
+            作ったクラスを使って、HTML を書き出すプログラムを作りましょう。繰り返しの解説をするために、表を作ります。このデータを使います。
+        </p>
+        <pre><code class="language-ruby">
+data = [
+    ["&lt;1-A&gt;", "&lt;1-B&gt;", "&lt;1-C&gt;"],
+    ["&lt;2-A&gt;", "&lt;2-B&gt;"],
+    ["&lt;3-A&gt;", "&lt;3-B&gt;", "&lt;3-C&gt;", "&lt;3-D&gt;"],
+];
+        </code></pre>
+        <h3>XContext を作る</h3>
+        <p>
+            テキストファイルライターを作ります。
+        </p>
+        <pre><code class="language-ruby">
+w = File.open("tutorial.html", "w")
+        </code></pre>
+        <p>
+            それを使って XContext を作ります。渡した data は、XContext から作った XCounter の data() メソッドで取得できます。
+        </p>
+        <pre><code class="language-ruby">
+ctx = XContext.new(w , data);
+        </code></pre>
+        <h3>XCounter で繰返しを制御</h3>
+        <p>
+            tr を繰り返して作るための XCounter を作ります。<br/>
+            奇数行と偶数行で色を変えるために、CSS の class を切り替えます。attrs メソッドをオーバーライドして class 属性の値を渡す辞書を奇数偶数で違うものにします。<br/>
+            繰り返しの終了を知らせる valid? メソッドもオーバーライドします。data の（１次）配列の長さに達したら false を返すようにします。
+        </p>
+        <pre><code class="language-ruby">
+tr_counter = ctx.create_counter();
+def tr_counter.attrs()
+    if self % 2 == 0
+        return {"class" =&gt; "even"};
+    else
+        return {"class" =&gt; "odd"};
+    end
+end
+def tr_counter.valid?()
+    return self &lt; data().length();
+end
+        </code></pre>
+        <p>
+            td を繰り返して作るための XCounter を作ります。２次元配列を扱うので、親カウンターの子供として作ります。<br/>
+            テキストとして書き出すデータを返すメソッドを新規に作ります。１次元目のカウントのための親カウンターは parent() でとれます。コンテキストに渡した全体データは、コンテキストから親カウンターを経由して、data() で取得できます。<br/>
+            繰り返しの終了を知らせる valid? メソッドのオーバーライドも作ります。２次元目の配列の長さに達したら false を返すようにします。
+        </p>
+        <pre><code class="language-ruby">
+td_counter = tr_counter.create_child();
+def td_counter.content()
+    dr = parent().as_index_of(data());
+    return self.as_index_of(dr);
+end
+def td_counter.valid?()
+    dr = parent().as_index_of(data());
+    return self &lt; dr.length();
+end
+        </code></pre>
+        <h3>いろいろな属性のための XCounter</h3>
+        <p>
+            必須でない属性をたくさん持つ要素は、XCounter を外からもらうようにしておきます。<br/>
+            （属性が沢山ある要素ではありませんが）コードハイライトを確実にするために言語を知らせる属性です。
+        </p>
+        <pre><code class="language-ruby">
+code_attr = XCounter.new(class: "language-c");
+        </code></pre>
+        <h3>基本構造を作る</h3>
+        <p>
+            子要素をブロックの中で pop します。
+        </p>
+        <pre><code class="language-ruby">
+HTML.pop(ctx){
+    HEAD.pop(ctx){
+    }
+    BODY.pop(ctx){
+    }
+}
+        </code></pre>
+        <h3>テキストを引数でとるようにした要素を作る</h3>
+        <p>
+            title 要素を作る TITLE クラスを pop します。
+        </p>
+        <pre><code class="language-ruby">
+    HEAD.pop(ctx){
+        TITLE.pop(ctx, "Hello, world");
+        </code></pre>
+        <h3>属性を引数でとるようにした要素を作る</h3>
+        <p>
+            css を指定します。テキストを引数でとる場合と同じです。
+        </p>
+        <pre><code class="language-ruby">
+    HEAD.pop(ctx){
+        CSS.pop(ctx, "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css");
+        CSS.pop(ctx, "sample.css");
+        </code></pre>
+        <h3>特殊な要素 script を作る</h3>
+        <p>
+            src 属性で指定する場合はそれを引数で指定します。<br/>スクリプトを直接書く場合は、ブロックで TextWriter を受け取って、w メソッドを使います。
+        </p>
+        <pre><code class="language-ruby">
+    HEAD.pop(ctx){
+        SCRIPT.pop(ctx, "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js");
+        SCRIPT.pop(ctx){|t|
+            t.w("hljs.highlightAll();");
+        }
+        </code></pre>
+        <h3>タグを有効にしたテキスト</h3>
+        <p>
+            TextWriter は XML エスケープをしないようにすることができます。escaped を true にします。
+        </p>
+        <pre><code class="language-ruby">
+    BODY.pop(ctx){
+        DIV.pop(ctx){
+            P.pop(ctx){|t|
+                t.escaped = true;
+                t.w("&lt;em&gt;Hello&lt;/em&gt; world");
+            }
+        </code></pre>
+        <h3>空要素を作る</h3>
+        <p>
+            コンテキストだけが必要です。
+        </p>
+        <pre><code class="language-ruby">
+    BODY.pop(ctx){
+        HR.pop(ctx);
+        </code></pre>
+        <h3>繰り返して要素を作る</h3>
+        <p>
+            tr 用と td 用の XCounter を引数で渡します。<br/>
+            TD ではブロックを作って TextWriter にテキストを渡します。td 用の XCounter に作ったテキストを返す特異メソッドを使います。
+        </p>
+        <pre><code class="language-ruby">
+    BODY.pop(ctx){
+        TABLE.pop(ctx){
+            TR.pop(ctx, tr_counter){
+                TD.pop(ctx, true, td_counter){|t|
+                    t.w(td_counter.content());
+                }
+            }
+        }
+        </code></pre>
+        <h3>プログラムコードを紹介する要素</h3>
+        <p>
+            最後はインデントを故意にずらす記述です。
+            pre と code を使います。<br/>
+            この場合の pre は code 要素を一つとるだけなので、シングルラインにします。<br/>
+            テキストにもインデントが入るので、pre ではこれをとらないと、左側に大きな隙間ができてしまいます。これを避けるため TextWriter に text_indent でインデントを変更させます。
+        </p>
+        <pre><code class="language-ruby">
+    BODY.pop(ctx){
+        PRE.pop(ctx, true){
+            CODE.pop(ctx, false, code_attr){|t|
+                t.text_indent = 0;
+                t.w &lt;&lt;'EOCODE'
+#include &lt;stdio.h&gt;
+int main()
+{
+    printf("Hello, world.");
+}
+EOCODE
+            }
+        }
+        </code></pre>
+    </body>
+</html>
