@@ -4,7 +4,7 @@ require("correspondable");
 
 class HTML < ElementWriter
     def self.pop(ctx, &child)
-        super(ctx, "html")
+        super(ctx, "html");
     end
 end
 
@@ -24,18 +24,15 @@ end
 
 class CSS < ElementWriter
     def self.pop(ctx, href)
-        c = XCounter.new()
-        c.attr("rel", "stylesheet");
-        c.attr("href", href)
+        c = XCounter.new(rel: "stylesheet", href: href);
         super(ctx, "link", true, c);
     end
 end
 
 class SCRIPT < ElementWriter
-    def self.pop(ctx, src = nil)
-        c = XCounter.new()
+    def self.pop(ctx, src = nil, &child)
+        c = XCounter.new(src: src);
         if src
-            c.attr("src", src)
             super(ctx, "script", true, c){
             }
         else
@@ -107,13 +104,13 @@ end
 
 class BR < ElementWriter
     def self.pop(ctx)
-        super(ctx, "br", true)
+        super(ctx, "br", true);
     end
 end
 
 class HR < ElementWriter
     def self.pop(ctx)
-        super(ctx, "hr")
+        super(ctx, "hr");
     end
 end
 

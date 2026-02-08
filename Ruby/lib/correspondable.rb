@@ -28,8 +28,10 @@ class XContext
         @single_line  = single_line
         @writer.write("<" + name);
         attrs.each() do |k, v|
-            @writer.write(" " + k + "=");
-            @writer.write(v.encode(:xml => :attr));
+            if v
+                @writer.write(" " + k.to_s() + "=");
+                @writer.write(v.encode(:xml => :attr));
+            end
         end
         if child
             @writer.write(">");
@@ -38,6 +40,7 @@ class XContext
                 @depth += 1;
             end
             @text.text_indent = @depth;
+            @text.escaped = false;
             child.call(@text)
             if single_line == false
                 @depth -= 1;
@@ -76,7 +79,7 @@ class XContext
 end
 
 class XCounter
-    def initialize(ctx = nil)
+    def initialize(ctx = nil, **kwrest)
         @context = ctx;
         if ctx
             @head_index = ctx.head_index();
@@ -84,17 +87,13 @@ class XCounter
             @head_index = 0;
         end
         @count = @head_index;
-        @attr = {}
+        @attr = kwrest;
     end
     attr_accessor :parent;
     def create_child()
         c = XCounter.new(@context);
         c.parent = self;
         return c;
-    end
-
-    def attr(k, v)
-        @attr[k] = v;
     end
 
     def next()
@@ -150,11 +149,10 @@ class TextWriter
     def initialize(ctx)
         @context = ctx;
     end
-    def text_indent=(indent)
-        @text_indent = indent;
-    end
-    def w(content, escaped = false)
+    attr_writer :text_indent;
+    attr_writer :escaped;
+    def w(content)
         content.chomp!();
-        @context.write_text(content, escaped, @text_indent)
+        @context.write_text(content, @escaped, @text_indent)
     end
 end
